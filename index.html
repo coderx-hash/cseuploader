@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>CSE ELITE | Smart Uploader</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 1100px; margin: 0 auto; padding: 20px; background-color: #0f172a; color: #cbd5e1; }
+    
+    /* HEADER */
+    h2 { color: #fbbf24; border-bottom: 2px solid #334155; padding-bottom: 15px; margin-top: 0; display: flex; align-items: center; gap: 10px; }
+    
+    /* INPUT AREA */
+    textarea { 
+        width: 100%; height: 300px; padding: 15px; font-size: 14px; box-sizing: border-box; 
+        border: 1px solid #334155; border-radius: 8px; font-family: "Courier New", monospace; 
+        line-height: 1.5; resize: vertical; background: #1e293b; color: #f1f5f9;
+    }
+    textarea:focus { outline: none; border-color: #fbbf24; box-shadow: 0 0 10px rgba(251, 191, 36, 0.1); }
+
+    /* BUTTONS */
+    .controls { margin: 20px 0; background: #1e293b; padding: 20px; border-radius: 12px; border: 1px solid #334155; }
+    .controls-row { display:flex; gap:12px; flex-wrap:wrap; align-items: center; }
+    
+    button { 
+        padding: 12px 20px; font-size: 14px; font-weight: 600; cursor: pointer; 
+        border: none; border-radius: 8px; transition: all 0.2s; display: flex; align-items: center; gap: 8px;
+    }
+    
+    #btnPreview { background-color: #fbbf24; color: #0f172a; }
+    #btnPreview:hover { filter: brightness(1.1); }
+    
+    #btnUpload { background-color: #10b981; color: white; }
+    #btnUpload:disabled { background-color: #334155; color: #64748b; cursor: not-allowed; }
+    
+    #btnClear { background-color: #ef4444; color: white; }
+    
+    #btnFetch { margin-left: auto; background: #3b82f6; color: white; }
+
+    /* STATUS & PREVIEW */
+    .status { margin-top: 15px; font-weight: 500; color: #94a3b8; padding: 10px; background: #0f172a; border-radius: 6px; border-left: 4px solid #fbbf24; }
+    
+    .preview-container { margin-top: 30px; }
+    .preview-header { font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #f8fafc; border-left: 4px solid #3b82f6; padding-left: 10px; }
+    
+    .question-card { 
+        background: #1e293b; border: 1px solid #334155; padding: 20px; margin-bottom: 15px; 
+        border-radius: 10px; position: relative; 
+    }
+    
+    /* ERROR DESIGN */
+    .question-card.error-card { border: 1px solid #ef4444; background-color: rgba(239, 68, 68, 0.05); }
+    .error-msg { color: #ef4444; font-weight: bold; font-size: 12px; display: block; margin-bottom: 10px; background: rgba(239, 68, 68, 0.1); padding: 5px 10px; border-radius: 4px; }
+
+    /* TEXT STYLES */
+    .q-text { font-weight: 600; color: #e2e8f0; margin-bottom: 12px; font-size: 16px; }
+    .choices-box { margin-left: 10px; font-size: 14px; color: #cbd5e1; border-left: 2px solid #475569; padding-left: 15px; }
+    
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+    .badge-ans { background-color: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-topic { background-color: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+    .badge-missing { background-color: #ef4444; color: white; }
+
+    .meta-box { margin-top: 15px; font-size: 13px; color: #94a3b8; background: #0f172a; padding: 10px; border-radius: 6px; border: 1px dashed #334155; }
+    
+    /* TABLE FOR DB VIEW */
+    .db-list { max-height: 600px; overflow-y: auto; border: 1px solid #334155; border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; background: #1e293b; }
+    th { background: #0f172a; font-weight: 600; color: #cbd5e1; position: sticky; top: 0; z-index: 10; text-align: left; padding: 15px; border-bottom: 2px solid #334155; }
+    td { padding: 15px; border-bottom: 1px solid #334155; font-size: 14px; vertical-align: top; color: #cbd5e1; }
+    tr:hover { background-color: #334155; }
+    
+    .muted { color:#64748b; font-size:13px; line-height: 1.5; margin-bottom: 15px; display: block; }
+  </style>
+</head>
+<body>
+
+  <h2><i class='bx bxs-server'></i> CSE ELITE: Smart Uploader</h2>
+
+  <span class="muted">
+    <b>Format Guide:</b> Paste text below. Separate questions with a blank line.<br>
+    <i>Note: Choices will be automatically shuffled (Rumbled) to avoid patterns.</i>
+  </span>
+
+  <textarea id="bulkRaw" placeholder="Paste your CSE questions here...
+
+1. If a shirt costs P500 after a 20% discount, what was the original price?
+A. P600
+B. P625
+C. P650
+D. P700
+Answer: B
+Rationale: 500 / 0.80 = 625.
+Category: Numerical
+
+2. Which word is a synonym of 'Happy'?
+A. Sad
+B. Joyful
+C. Angry
+D. Bored
+Answer: B
+Rationale: Joyful means happy."></textarea>
+
+  <div class="controls">
+    <div class="controls-row">
+      <button id="btnPreview"><i class='bx bx-shuffle'></i> 1. Scan & Rumble Choices</button>
+      <button id="btnUpload" disabled><i class='bx bx-cloud-upload'></i> 2. Upload to App</button>
+      <button id="btnClear"><i class='bx bx-trash'></i> Clear</button>
+      <button id="btnFetch"><i class='bx bx-data'></i> View Live Data</button>
+    </div>
+    <div class="status" id="status">Ready. Waiting for input...</div>
+  </div>
+
+  <div id="previewContainer" class="preview-container" style="display:none">
+    <div class="preview-header">Scan Results (Choices Shuffled)</div>
+    <div id="previewList"></div>
+  </div>
+
+  <div id="dbContainer" class="preview-container" style="display:none">
+    <div class="preview-header">Live Database (Firestore: 'questions')</div>
+    <div id="uploadedList" class="db-list"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import {
+      getFirestore, collection, addDoc, doc, deleteDoc, getDocs, query, orderBy, where, limit
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBY4msSow0k_2iP0IJeMZH8Qbzdj5lXeAo",
+      authDomain: "csereviewer-fef62.firebaseapp.com",
+      projectId: "csereviewer-fef62",
+      storageBucket: "csereviewer-fef62.firebasestorage.app",
+      messagingSenderId: "74512458822",
+      appId: "1:74512458822:web:3bdde797fb72930c801647",
+      measurementId: "G-D8SESFX8T5"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // --- UTILS ---
+    const escapeHtml = (str) => (!str ? "" : str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]));
+    const cleanText = (s) => (s || "").replace(/\s+/g, " ").trim();
+
+    // Fisher-Yates Shuffle
+    function shuffleArray(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    // --- CSE TOPIC DETECTION ---
+    function detectTopic(text) {
+      const q = text.toLowerCase();
+      const explicit = text.match(/(?:Category|Topic)\s*[:\-]\s*(Numerical|Verbal|Analytical|GenInfo|Clerical)/i);
+      if (explicit) {
+          const t = explicit[1].toLowerCase();
+          if(t.includes('num')) return "Numerical";
+          if(t.includes('verb')) return "Verbal";
+          if(t.includes('ana')) return "Analytical";
+          if(t.includes('gen')) return "GenInfo";
+          if(t.includes('cler')) return "Clerical";
+      }
+
+      const map = {
+        Numerical: ["math", "number", "compute", "calculate", "algebra", "fraction", "percent", "ratio", "solve"],
+        Verbal: ["grammar", "english", "synonym", "antonym", "paragraph", "verb", "noun", "correct usage", "sentence"],
+        Analytical: ["logic", "pattern", "assumption", "conclusion", "argument", "sequence", "puzzle"],
+        GenInfo: ["constitution", "law", "republic act", "code of conduct", "peace", "human rights", "environment"],
+        Clerical: ["filing", "alphabetical", "clerical", "office", "memo", "record"]
+      };
+
+      if (map.Numerical.some(w => q.includes(w))) return "Numerical";
+      if (map.Verbal.some(w => q.includes(w))) return "Verbal";
+      if (map.Analytical.some(w => q.includes(w))) return "Analytical";
+      if (map.GenInfo.some(w => q.includes(w))) return "GenInfo";
+      if (map.Clerical.some(w => q.includes(w))) return "Clerical";
+      return "General";
+    }
+
+    // --- PARSER WITH SHUFFLE ---
+    function parseBlock(block) {
+      const lines = block.split(/\r?\n/).map(l => l.trim()).filter(l => l !== "");
+      if (lines.length === 0) return null;
+
+      let question = lines[0].replace(/^\d+[\.\)\-]\s*/, "").trim(); 
+      let choices = { A: "", B: "", C: "", D: "" };
+      let originalAnswerLetter = "";
+      let rationale = "";
+
+      lines.forEach(line => {
+        const cleanLine = line.replace(/[\u200B-\u200D\uFEFF]/g, ''); 
+        
+        const ansMatch = cleanLine.match(/^(?:Answer|Ans|ANS)\s*[:\-\.]\s*([A-Za-z])/i);
+        if (ansMatch) { originalAnswerLetter = ansMatch[1].toUpperCase(); return; }
+
+        const ratMatch = cleanLine.match(/^(?:Rationale|Rat)\s*[:\-\.]\s*(.*)/i);
+        if (ratMatch) { rationale = ratMatch[1]; return; }
+
+        const choiceMatch = cleanLine.match(/^([A-Da-d])\s*[\.\)\-]\s*(.*)/);
+        if (choiceMatch && !cleanLine.toLowerCase().startsWith("answer")) {
+          const letter = choiceMatch[1].toUpperCase();
+          if (choices[letter] !== undefined) choices[letter] = choiceMatch[2];
+        }
+      });
+
+      const missing = [];
+      if (!question) missing.push("Question");
+      if (!choices.A) missing.push("Option A");
+      if (!choices.B) missing.push("Option B");
+      if (!choices.C) missing.push("Option C");
+      if (!choices.D) missing.push("Option D");
+      if (!originalAnswerLetter) missing.push("Answer Key");
+
+      // Logic: Get correct TEXT, then SHUFFLE options
+      let correctString = "";
+      let finalOptions = [choices.A, choices.B, choices.C, choices.D];
+      let finalAnswerLetter = originalAnswerLetter;
+
+      if(originalAnswerLetter && choices[originalAnswerLetter]) {
+          correctString = choices[originalAnswerLetter];
+          
+          // --- SHUFFLE LOGIC (RUMBLE) ---
+          finalOptions = shuffleArray([...finalOptions]); // Shuffle the array
+          
+          // Find where the correct string moved to
+          const newIndex = finalOptions.indexOf(correctString);
+          const letters = ['A', 'B', 'C', 'D'];
+          finalAnswerLetter = letters[newIndex];
+      } else {
+          missing.push("Answer Key Mismatch");
+      }
+
+      return {
+        question, 
+        options: finalOptions, // These are now shuffled
+        correct: correctString, 
+        answerLetter: finalAnswerLetter, // This is the NEW letter
+        rationale, 
+        category: detectTopic(block),
+        isValid: missing.length === 0,
+        missing: missing
+      };
+    }
+
+    function parseBulk(raw) {
+      const blocks = raw.split(/\n\s*\n|---/).map(b => b.trim()).filter(b => b.length > 10);
+      return blocks.map(parseBlock).filter(p => p !== null);
+    }
+
+    // --- UI LOGIC ---
+    const els = {
+      raw: document.getElementById("bulkRaw"),
+      previewBtn: document.getElementById("btnPreview"),
+      uploadBtn: document.getElementById("btnUpload"),
+      clearBtn: document.getElementById("btnClear"),
+      fetchBtn: document.getElementById("btnFetch"),
+      status: document.getElementById("status"),
+      previewList: document.getElementById("previewList"),
+      previewCont: document.getElementById("previewContainer"),
+      dbCont: document.getElementById("dbContainer"),
+      dbList: document.getElementById("uploadedList")
+    };
+
+    let parsedData = [];
+
+    els.previewBtn.addEventListener("click", () => {
+      const raw = els.raw.value;
+      if (!raw.trim()) { els.status.innerHTML = "Please paste text first."; return; }
+
+      parsedData = parseBulk(raw);
+      els.previewCont.style.display = "block";
+      els.dbCont.style.display = "none";
+      
+      if (parsedData.length === 0) {
+        els.status.innerHTML = "No questions detected.";
+        els.previewList.innerHTML = "<div style='padding:10px'>No data found.</div>";
+        return;
+      }
+
+      let validCount = 0;
+      let html = "";
+
+      parsedData.forEach((p, i) => {
+        if (p.isValid) validCount++;
+        const errorClass = p.isValid ? "" : "error-card";
+        const errorMsg = p.isValid ? "" : `<span class="error-msg">MISSING: ${p.missing.join(", ")}</span>`;
+        
+        html += `
+          <div class="question-card ${errorClass}">
+            ${errorMsg}
+            <div style="display:flex; justify-content:space-between;">
+              <span class="badge badge-topic">${p.category}</span>
+              <span class="badge ${p.isValid ? 'badge-ans' : 'badge-missing'}">New Ans: ${p.answerLetter}</span>
+            </div>
+            <div class="q-text">Q${i+1}. ${escapeHtml(p.question)}</div>
+            <div class="choices-box">
+              A. ${escapeHtml(p.options[0])}<br>
+              B. ${escapeHtml(p.options[1])}<br>
+              C. ${escapeHtml(p.options[2])}<br>
+              D. ${escapeHtml(p.options[3])}
+            </div>
+            ${p.rationale ? `<div class="meta-box"><b>Rationale:</b> ${escapeHtml(p.rationale)}</div>` : ""}
+          </div>`;
+      });
+
+      els.previewList.innerHTML = html;
+      
+      if (validCount > 0) {
+        els.uploadBtn.disabled = false;
+        els.uploadBtn.innerHTML = `<i class='bx bx-cloud-upload'></i> Upload ${validCount} Items`;
+        els.status.innerHTML = `Scanned <b>${parsedData.length}</b>. Valid: <b>${validCount}</b>. Choices have been shuffled.`;
+      } else {
+        els.uploadBtn.disabled = true;
+        els.uploadBtn.textContent = "Fix Errors First";
+        els.status.innerHTML = "All items have errors.";
+      }
+    });
+
+    els.uploadBtn.addEventListener("click", async () => {
+      const validItems = parsedData.filter(p => p.isValid);
+      if (validItems.length === 0) return;
+
+      els.uploadBtn.disabled = true;
+      els.uploadBtn.textContent = "Processing...";
+      els.status.innerHTML = "<i class='bx bx-loader-alt bx-spin'></i> Checking for duplicates & uploading...";
+
+      let successCount = 0;
+      let skippedCount = 0;
+      let errorCount = 0;
+
+      for (const item of validItems) {
+        try {
+          const qClean = cleanText(item.question);
+
+          // 1. DUPLICATE CHECK
+          const dupQuery = query(
+            collection(db, "questions"), 
+            where("question", "==", qClean),
+            limit(1) 
+          );
+          const dupSnap = await getDocs(dupQuery);
+
+          if (!dupSnap.empty) {
+            skippedCount++;
+            continue;
+          }
+
+          // 2. UPLOAD IF UNIQUE
+          const docData = {
+            category: item.category,
+            question: qClean,
+            options: item.options.map(cleanText),
+            correct: cleanText(item.correct),
+            rationale: cleanText(item.rationale),
+            timestamp: Date.now()
+          };
+
+          await addDoc(collection(db, "questions"), docData);
+          successCount++;
+
+        } catch (err) {
+          console.error("Upload failed:", err);
+          errorCount++;
+        }
+      }
+
+      let msg = `<span style="color:#10b981"><b>Finished!</b> Added: ${successCount}</span>`;
+      if (skippedCount > 0) msg += ` | <span style="color:#fbbf24">Skipped (Duplicate): ${skippedCount}</span>`;
+      if (errorCount > 0) msg += ` | Failed: ${errorCount}`;
+
+      els.status.innerHTML = msg;
+      els.uploadBtn.textContent = "Upload Complete";
+      els.raw.value = ""; 
+      els.previewCont.style.display = "none";
+      fetchDatabase(); 
+    });
+
+    els.clearBtn.addEventListener("click", () => {
+        els.raw.value = "";
+        els.previewCont.style.display = "none";
+        els.status.textContent = "Cleared.";
+    });
+
+    els.fetchBtn.addEventListener("click", fetchDatabase);
+
+    async function fetchDatabase() {
+      els.previewCont.style.display = "none";
+      els.dbCont.style.display = "block";
+      els.dbList.innerHTML = "<div style='padding:20px; text-align:center;'>Loading DB...</div>";
+
+      try {
+        const q = query(collection(db, "questions"), orderBy("timestamp", "desc"));
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+          els.dbList.innerHTML = "<div style='padding:20px; text-align:center;'>Database is empty.</div>";
+          return;
+        }
+
+        let html = `<table><thead><tr><th width="60%">Question</th><th>Category</th><th>Action</th></tr></thead><tbody>`;
+        snapshot.forEach(docSnap => {
+          const d = docSnap.data();
+          html += `
+            <tr id="row-${docSnap.id}">
+              <td>
+                <div style="font-weight:bold; margin-bottom:5px;">${escapeHtml(d.question)}</div>
+                <div style="font-size:12px; color:#94a3b8;">Correct: <b style="color:#10b981">${escapeHtml(d.correct)}</b></div>
+              </td>
+              <td><span class="badge badge-topic">${d.category || "General"}</span></td>
+              <td><button style="background:#ef4444; padding:6px 12px; font-size:12px;" onclick="window.deleteItem('${docSnap.id}')">Delete</button></td>
+            </tr>`;
+        });
+        html += "</tbody></table>";
+        els.dbList.innerHTML = html;
+        els.status.textContent = `Loaded ${snapshot.size} questions.`;
+      } catch (err) {
+        els.dbList.innerHTML = `<div style="color:#ef4444; padding:20px;">Error: ${err.message}</div>`;
+      }
+    }
+
+    window.deleteItem = async (id) => {
+      if(!confirm("Delete this?")) return;
+      try {
+        await deleteDoc(doc(db, "questions", id));
+        document.getElementById(`row-${id}`).style.display = 'none';
+      } catch(e) { alert(e.message); }
+    };
+  </script>
+</body>
+</html>
