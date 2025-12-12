@@ -163,6 +163,7 @@ Category: Numerical"></textarea>
       getFirestore, collection, addDoc, doc, deleteDoc, getDocs, query, orderBy, where, limit 
     } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+    // --- YOUR FIREBASE CONFIG ---
     const firebaseConfig = {
       apiKey: "AIzaSyBY4msSow0k_2iP0IJeMZH8Qbzdj5lXeAo",
       authDomain: "csereviewer-fef62.firebaseapp.com",
@@ -173,6 +174,7 @@ Category: Numerical"></textarea>
       measurementId: "G-D8SESFX8T5"
     };
 
+    // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
@@ -411,6 +413,13 @@ Category: Numerical"></textarea>
         } catch (err) {
           console.error("Upload failed:", err);
           errorCount++;
+          // Specific check for permissions error
+          if(err.code === "permission-denied") {
+             alert("ACCESS DENIED: Please update your Firestore Security Rules in the Firebase Console to 'allow read, write: if true;' temporarily.");
+             els.status.innerHTML = "<span style='color:red'>Error: Permission Denied. Check Console.</span>";
+             els.uploadBtn.disabled = false;
+             return;
+          }
         }
       }
 
